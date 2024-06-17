@@ -236,16 +236,32 @@ def compare_final_x_minus_dc(directory, variable_dict, minus_DC = True, normaliz
             DCdata = solver.simulate_single(DC_params, functions.DC, flowfield, dt, n_step, x0, u0)
             DC_final_r = DCdata.trajectory[-1, 0]
             DC_final_z = DCdata.trajectory[-1, 1]
+            if normalizeDC:
+                for d in data:
+                    final_r.append(d.trajectory[-1, 0]/DC_final_r - 1)
+                    final_z.append(d.trajectory[-1, 1]/DC_final_z - 1)
+                    T.append(d.T)
+            else:
+                for d in data:
+                    final_r.append(d.trajectory[-1, 0] - DC_final_r)
+                    final_z.append(d.trajectory[-1, 1] - DC_final_z)
+                    T.append(d.T)
 
-            for d in data:
-                final_r.append(d.trajectory[-1, 0] - DC_final_r)
-                final_z.append(d.trajectory[-1, 1] - DC_final_z)
-                T.append(d.T)
         else:
-            for d in data:
-                final_r.append(d.trajectory[-1, 0])
-                final_z.append(d.trajectory[-1, 1])
-                T.append(d.T)
+            if normalizeDC:
+                DCdata = solver.simulate_single(DC_params, functions.DC, flowfield, dt, n_step, x0, u0)
+                DC_final_r = DCdata.trajectory[-1, 0]
+                DC_final_z = DCdata.trajectory[-1, 1]
+                for d in data:
+                    final_r.append(d.trajectory[-1, 0]/DC_final_r)
+                    final_z.append(d.trajectory[-1, 1]/DC_final_z)
+                    T.append(d.T)
+            else:
+                for d in data:
+                    final_r.append(d.trajectory[-1, 0])
+                    final_z.append(d.trajectory[-1, 1])
+                    T.append(d.T)
+
 
         order = np.argsort(T)
         final_r_sorted = np.array(final_r)[order]
