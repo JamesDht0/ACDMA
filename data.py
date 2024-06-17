@@ -7,8 +7,6 @@ import numpy as np
 import functions
 import solver
 from itertools import product
-
-
 class particle_data:
     def __init__(self,rhoP,dP,phi,V0,T,trajectory,velocity,time_points,waveform,flowfield):
         self.rhoP = rhoP
@@ -26,28 +24,22 @@ class particle_data:
         return (f"particle_data(rhoP={self.rhoP}, dP={self.dP}, phi={self.phi}, V0={self.V0}, T={self.T}, "
                 f"trajectory={self.trajectory}, velocity={self.velocity}, time_points={self.time_points}, "
                 f"waveform={self.waveform.__name__}, flowfield={self.flowfield.__name__})")
-
-
 def save_instance(instance,directory,filename):
     if not os.path.exists(directory):
         os.makedirs(directory)
     filepath = os.path.join(directory, filename)
     with open(filepath, 'wb') as file:
         pickle.dump(instance, file)
-
 def load_instance(directory, filename):
     filepath = os.path.join(directory, filename)
     with open(filepath, 'rb') as file:
         return pickle.load(file)
-
 def list_files(directory):
     # List all items in the directory
     items = os.listdir(directory)
     # Filter out directories, keeping only files
     files = [item for item in items if os.path.isfile(os.path.join(directory, item))]
     return files
-
-
 def plot_arrays(array_x, array_y, x_label, y_label):
     plt.figure()
     plt.plot(array_x)
@@ -55,7 +47,6 @@ def plot_arrays(array_x, array_y, x_label, y_label):
     plt.xlabel(x_label)
     plt.ylabel(y_label)
     plt.show()
-
 def sinlge_plot(directory,filename):
     # plot the trajectory, r-t,z-t plots and velocity plots.
     dat = load_instance(directory,filename)
@@ -74,7 +65,6 @@ def sinlge_plot(directory,filename):
     phi = dat.phi
 
     create_gui(arrays)
-
 def create_gui(arrays):
     def update_plot(*args):
         selected_x = x_var.get()
@@ -106,7 +96,6 @@ def create_gui(arrays):
     plot_button.pack()
 
     root.mainloop()
-
 def load_pkl(directory):
     pkl_files = [f for f in os.listdir(directory) if f.endswith('.pkl')]
     data = []
@@ -115,7 +104,6 @@ def load_pkl(directory):
         with open(filepath, 'rb') as file:
             data.append(pickle.load(file))
     return data
-
 def final_x_T(directory):
     data = load_pkl(directory)
 
@@ -150,9 +138,6 @@ def final_x_T(directory):
 
     plt.tight_layout()
     plt.show()
-
-
-
 def plot_trajectory(directory,filename):
     data = load_instance(directory,filename)
     print(data.time_points)
@@ -160,103 +145,31 @@ def plot_trajectory(directory,filename):
     plt.figure()
     plt.plot(data.trajectory[:,0],data.time_points)
     plt.show()
-
-def filter_filenames_by_variable(directory, variable_name, variable_value):
-    # Regular expression to match filenames and extract variables
-    pattern = re.compile(
-        r"particle_data_rhoP(\d+(\.\d+)?)_dP(\d+(\.\d+)?(e[-+]?\d+)?)_V0(\d+(\.\d+)?(e[-+]?\d+)?)_T(\d+(\.\d+)?(e[-+]?\d+)?)_phi(\d+(\.\d+)?(e[-+]?\d+)?)(_wf_\w+)(_ff_\w+).pkl")
-
-    matching_files = []
-    matching_data = []
-
-    for filename in os.listdir(directory):
-        match = pattern.match(filename)
-        if match:
-            variables = match.groups()
-            # Extract variables from the matched groups
-            rhoP = float(variables[0])
-            dP = float(variables[2])
-            V0 = float(variables[5])
-            T = float(variables[8])
-            phi = float(variables[11])
-            waveform = variables[13]
-            flowfield = variables[15]
-
-            # Check if the current file matches the specified variable and value
-            if variable_name == 'rhoP' and rhoP == variable_value:
-                matching_files.append(filename)
-            elif variable_name == 'dP' and dP == variable_value:
-                matching_files.append(filename)
-            elif variable_name == 'V0' and V0 == variable_value:
-                matching_files.append(filename)
-            elif variable_name == 'T' and T == variable_value:
-                matching_files.append(filename)
-            elif variable_name == 'phi' and phi == variable_value:
-                matching_files.append(filename)
-
-
-    return matching_files
-
-def compare_final_x(directory,variable_name,variable_values):
-    fig, axs = plt.subplots(2, 1, figsize=(10, 8))
-    for value in variable_values:
-        data = []
-        matching_files = filter_filenames_by_variable(directory,variable_name,value)
-
-        for pkl_file in matching_files:
-            filepath = os.path.join(directory, pkl_file)
-            with open(filepath, 'rb') as file:
-                data.append(pickle.load(file))
-
-        final_r = []
-        final_z = []
-        T = []
-
-        for i in range(0, len(data)):
-            final_r.append(data[i].trajectory[-1, 0])
-            final_z.append(data[i].trajectory[-1, 1])
-            T.append(data[i].T)
-
-        order = np.argsort(T)
-        final_r_sorted = np.array(final_r)[order]
-        final_z_sorted = np.array(final_z)[order]
-        T_sorted = np.array(T)[order]
-        axs[0].plot(T_sorted, final_r_sorted, label=f'{variable_name}={value}')
-        axs[1].plot(T_sorted, final_z_sorted, label=f'{variable_name}={value}')
-
-
-    axs[0].set_xlabel('T')
-    axs[0].set_ylabel('r')
-    axs[0].autoscale()
-    axs[0].set_xscale('log')
-
-    axs[1].set_xlabel('T')
-    axs[1].set_ylabel('z')
-    axs[1].autoscale()
-    axs[1].set_xscale('log')
-
-    axs[1].legend()
-
-    plt.tight_layout()
-    plt.show()
-
-
-def extract_parameters(filename, foldername):
+def extract_parameters(filename, foldername, compressed = True):
     # Define the regular expression pattern based on the filename format
-    file_pattern = re.compile(
-        r"particle_data_rhoP(?P<rhoP>[\d\.e+-]+)_dP(?P<dP>[\d\.e+-]+)_V0(?P<V0>[\d\.e+-]+)_T(?P<T>[\d\.e+-]+)_phi(?P<phi>[\d\.e+-]+)_wf_(?P<waveform>\w+)_ff_(?P<flowfield>\w+).pkl"
-    )
 
-    # Define the regular expression pattern for the folder name
-    folder_pattern = re.compile(
-        r"raw/wf_(?P<waveform>\w+)_ff_(?P<flowfield>\w+)_dt_(?P<dt>[\d\.e+-]+)_nsteps_(?P<nsteps>\d+)_x0_\[(?P<x0>[\d\., ]+)\]_u0_\[(?P<u0>[\d\., ]+)\]"
-    )
+    if compressed:
+        file_pattern = re.compile(
+            r"particle_data_rhoP(?P<rhoP>[\d\.e+-]+)_dP(?P<dP>[\d\.e+-]+)_V0(?P<V0>[\d\.e+-]+)_T(?P<T>[\d\.e+-]+)_phi(?P<phi>[\d\.e+-]+)_wf_(?P<waveform>\w+)_ff_(?P<flowfield>\w+)_comp_[\d]+\.pkl"
+        )
+        folder_pattern = re.compile(
+            r"raw/wf_(?P<waveform>\w+)_ff_(?P<flowfield>\w+)_dt_(?P<dt>[\d\.e+-]+)_nsteps_(?P<nsteps>\d+)_x0_\[(?P<x0>[\d\., ]+)\]_u0_\[(?P<u0>[\d\., ]+)\]_comp_[\d]+"
+        )
+    else:
+        file_pattern = re.compile(
+            r"particle_data_rhoP(?P<rhoP>[\d\.e+-]+)_dP(?P<dP>[\d\.e+-]+)_V0(?P<V0>[\d\.e+-]+)_T(?P<T>[\d\.e+-]+)_phi(?P<phi>[\d\.e+-]+)_wf_(?P<waveform>\w+)_ff_(?P<flowfield>\w+)\.pkl"
+        )
+        # Define the regular expression pattern for the folder name
+        folder_pattern = re.compile(
+            r"raw/wf_(?P<waveform>\w+)_ff_(?P<flowfield>\w+)_dt_(?P<dt>[\d\.e+-]+)_nsteps_(?P<nsteps>\d+)_x0_\[(?P<x0>[\d\., ]+)\]_u0_\[(?P<u0>[\d\., ]+)\]"
+        )
 
-    # Match the file pattern with the filename
+    # Try matching the first format
     file_match = file_pattern.match(filename)
-
-    # Match the folder pattern with the foldername
     folder_match = folder_pattern.match(foldername)
+
+    print('file',file_match)
+    print('folder',folder_match)
 
     if file_match and folder_match:
         # Extract parameters from the file as a dictionary
@@ -287,24 +200,7 @@ def extract_parameters(filename, foldername):
         return parameters, dt, nsteps, x0, u0, waveform, flowfield
     else:
         raise ValueError("Filename or folder name does not match the expected pattern")
-
-
-def filter_dc_files(directory):
-    dc_files = filter_filenames_by_variable(directory, 'T', 0)
-    dc_data_dict = {}
-
-    for dc_file in dc_files:
-        filepath = os.path.join(directory, dc_file)
-        with open(filepath, 'rb') as file:
-            dc_data = pickle.load(file)
-            parameters, waveform, flowfield = extract_parameters(dc_file, directory)
-            key = tuple((k, parameters[k]) for k in parameters if k != 'T')
-            dc_data_dict[key] = dc_data
-
-    return dc_data_dict
-
-
-def compare_final_x_minus_dc(directory, variable_dict):
+def compare_final_x_minus_dc(directory, variable_dict, minus_DC = True, normalizeDC = True,compressed = True):
     fig, axs = plt.subplots(2, 1, figsize=(10, 8))
 
     keys, values = zip(*variable_dict.items())
@@ -327,22 +223,29 @@ def compare_final_x_minus_dc(directory, variable_dict):
             with open(filepath, 'rb') as file:
                 data.append(pickle.load(file))
 
-        DC_params, dt, n_step, x0, u0, waveform, flowfield = extract_parameters(matching_files[0], directory)
+        DC_params, dt, n_step, x0, u0, waveform, flowfield = extract_parameters(matching_files[0], directory,compressed=compressed)
 
         DC_params['waveform'] = 'DC'
 
-        DCdata = solver.simulate_single(DC_params, functions.DC, flowfield, dt, n_step, x0, u0)
-        DC_final_r = DCdata.trajectory[-1, 0]
-        DC_final_z = DCdata.trajectory[-1, 1]
 
         final_r = []
         final_z = []
         T = []
 
-        for d in data:
-            final_r.append(d.trajectory[-1, 0] - DC_final_r)
-            final_z.append(d.trajectory[-1, 1] - DC_final_z)
-            T.append(d.T)
+        if minus_DC:
+            DCdata = solver.simulate_single(DC_params, functions.DC, flowfield, dt, n_step, x0, u0)
+            DC_final_r = DCdata.trajectory[-1, 0]
+            DC_final_z = DCdata.trajectory[-1, 1]
+
+            for d in data:
+                final_r.append(d.trajectory[-1, 0] - DC_final_r)
+                final_z.append(d.trajectory[-1, 1] - DC_final_z)
+                T.append(d.T)
+        else:
+            for d in data:
+                final_r.append(d.trajectory[-1, 0])
+                final_z.append(d.trajectory[-1, 1])
+                T.append(d.T)
 
         order = np.argsort(T)
         final_r_sorted = np.array(final_r)[order]
@@ -365,7 +268,6 @@ def compare_final_x_minus_dc(directory, variable_dict):
 
     plt.tight_layout()
     plt.show()
-
 def filter_filenames_by_variables(directory, variable_dict):
     matching_files = []
     for filename in os.listdir(directory):
@@ -380,3 +282,53 @@ def filter_filenames_by_variables(directory, variable_dict):
             except Exception as e:
                 print(f"Error processing file {filename}: {e}")
     return matching_files
+def process_directory(input_directory, n_interval):
+    # compress the data by saving every n_interval value and puts it into a new directory.
+    # _comp'n_interval' is added to the directory name and filenames
+
+    # Create the output directory name
+    base_dir_name = os.path.basename(os.path.normpath(input_directory))
+    output_directory = os.path.join(os.path.dirname(input_directory), f"{base_dir_name}_comp_{n_interval}")
+
+    if not os.path.exists(output_directory):
+        os.makedirs(output_directory)
+
+    for filename in os.listdir(input_directory):
+        if filename.endswith('.pkl'):
+            input_filepath = os.path.join(input_directory, filename)
+            with open(input_filepath, 'rb') as f:
+                data = pickle.load(f)
+
+            # Select every n_interval values and include the last value
+            time_points = data.time_points[::n_interval]
+            trajectory = data.trajectory[::n_interval]
+            velocity = data.velocity[::n_interval]
+
+            if data.time_points[-1] not in time_points:
+                time_points = np.append(time_points, data.time_points[-1])
+            if not np.array_equal(data.trajectory[-1], trajectory[-1]):
+                trajectory = np.vstack([trajectory, data.trajectory[-1]])
+            if not np.array_equal(data.velocity[-1], velocity[-1]):
+                velocity = np.vstack([velocity, data.velocity[-1]])
+
+            # Create a new particle_data instance with the selected values
+            new_data = particle_data(
+                rhoP=data.rhoP,
+                dP=data.dP,
+                phi=data.phi,
+                V0=data.V0,
+                T=data.T,
+                trajectory=trajectory,
+                velocity=velocity,
+                time_points=time_points,
+                waveform=data.waveform,
+                flowfield=data.flowfield
+            )
+
+            # Create the new filename and save the file
+            new_filename = filename.replace('.pkl', f'_comp_{n_interval}.pkl')
+            output_filepath = os.path.join(output_directory, new_filename)
+            with open(output_filepath, 'wb') as f:
+                pickle.dump(new_data, f)
+
+    print(f"Processing complete. Processed files are saved in {output_directory}")
