@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 
 parameters1 = {
     "rhoP" : [800,2000],
-    "dP" : [5e-7],
+    "dP" : [1e-6,5e-7,3e-7],
     "phi" : [0],
     "V0" : [1e4],
     #"T" : np.linspace(1e-4, 10e-4, 100).tolist()
@@ -25,7 +25,7 @@ parameters2 = {
 }
 
 
-waveform = functions.one_plus_sin
+waveform = functions._05_plus_sin
 flowfield = functions.linear
 dt = 1e-7
 n_steps = int(1e6)
@@ -47,10 +47,11 @@ if __name__ == '__main__':
     #solver.sweep(parameters1,simulate_single_phi_avg_partial)
     duration = time.time() - start_time
 
-    directory1 = 'raw/wf_one_plus_sin_ff_linear_dt_1e-06_nsteps_1000000_x0_[0.01, 0]_u0_[0, 0]'
-    directory2 = 'raw/wf_one_plus_sin_ff_linear_dt_1e-06_nsteps_1000000_x0_[0.01, 0]_u0_[0, 0]_comp_10'
+
     directory3 = 'raw/wf_one_plus_sin_ff_linear_dt_1e-07_nsteps_1000000_x0_[0.01, 0]_u0_[0, 0]'
-    directory4 = 'raw/wf_one_plus_sin_ff_linear_dt_1e-07_nsteps_1000000_x0_[0.01, 0]_u0_[0, 0]_comp_10'
+    directory4 = 'raw/wf__075_plus_sin_ff_linear_dt_1e-07_nsteps_1000000_x0_[0.01, 0]_u0_[0, 0]'
+    directory5 = 'raw/wf_half_sawtooth_ff_linear_dt_1e-07_nsteps_1000000_x0_[0.01, 0]_u0_[0, 0]'
+    directory6 = 'raw/wf__05_plus_sin_ff_linear_dt_1e-07_nsteps_1000000_x0_[0.01, 0]_u0_[0, 0]'
     #load_res = data.load_instance(directory,filename)
     #data.sinlge_plot(directory1,'particle_data_rhoP800_dP1e-06_V010000.0_T0.000644946677103762_phi0_wf_one_plus_sin_ff_linear.pkl')
     #data.plot_trajectory(directory1,'particle_data_rhoP800_dP1e-06_V010000.0_T0.000644946677103762_phi0_wf_one_plus_sin_ff_linear.pkl')
@@ -59,8 +60,8 @@ if __name__ == '__main__':
 
     variable_dict = {
         'rhoP': [800,2000],
-        'dP': [1e-6,5e-7]
+        'dP': [1e-6,5e-7,3e-7]
     }
-    data.compare_final_x_minus_dc(directory3,variable_dict,minus_DC=True,normalizeDC=True,comp = False)
+    data.compare_final_x_minus_dc(directory6,variable_dict,minus_DC=True,normalizeDC=True,comp = False)
     print('time',duration)
     #print(res)
