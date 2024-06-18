@@ -14,7 +14,7 @@ def one_plus_sin(V0,T,t,phi):
         phase = 2 * math.pi * (t % T) / T + phi
         return -V0 * (1 + np.sin(phase))
     else:
-        return V0
+        return -V0
 
 def _075_plus_sin(V0,T,t,phi):
 
@@ -22,7 +22,7 @@ def _075_plus_sin(V0,T,t,phi):
         phase = 2 * math.pi * t / T + phi
         return -V0*4/3*(3/4+np.sin(phase))
     else:
-        return V0
+        return -V0
 
 def abs_sine(V0,T,t,phi):
 
@@ -31,7 +31,7 @@ def abs_sine(V0,T,t,phi):
         # pi/2 to compute the mean value
         return -V0*math.pi/2*abs(np.sin(phase))
     else:
-        return V0
+        return -V0
 
 def half_sawtooth(V0,T,t,phi):
 
@@ -41,7 +41,7 @@ def half_sawtooth(V0,T,t,phi):
         phase = (2 * math.pi * (t % T) / T + phi) % (2*math.pi)
         return V0*2*(2*math.pi-phase)/(2*math.pi)
     else:
-        return V0
+        return -V0
 
 # flowfields are defined here:
 

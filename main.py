@@ -9,11 +9,11 @@ import matplotlib.pyplot as plt
 
 parameters1 = {
     "rhoP" : [800,2000],
-    "dP" : [1e-6],
+    "dP" : [5e-7],
     "phi" : [0],
     "V0" : [1e4],
     #"T" : np.linspace(1e-4, 10e-4, 100).tolist()
-    "T" : sorted(np.logspace(-5, -3, num=127, base=10).tolist() + [0.00])
+    "T" : sorted(np.logspace(-6, -3, num=127, base=10).tolist() + [0.00])
 }
 
 parameters2 = {
@@ -27,7 +27,7 @@ parameters2 = {
 
 waveform = functions.one_plus_sin
 flowfield = functions.linear
-dt = 1e-6
+dt = 1e-7
 n_steps = int(1e6)
 # 40s for one particle running 1e6 steps
 
@@ -49,16 +49,18 @@ if __name__ == '__main__':
 
     directory1 = 'raw/wf_one_plus_sin_ff_linear_dt_1e-06_nsteps_1000000_x0_[0.01, 0]_u0_[0, 0]'
     directory2 = 'raw/wf_one_plus_sin_ff_linear_dt_1e-06_nsteps_1000000_x0_[0.01, 0]_u0_[0, 0]_comp_10'
-
+    directory3 = 'raw/wf_one_plus_sin_ff_linear_dt_1e-07_nsteps_1000000_x0_[0.01, 0]_u0_[0, 0]'
+    directory4 = 'raw/wf_one_plus_sin_ff_linear_dt_1e-07_nsteps_1000000_x0_[0.01, 0]_u0_[0, 0]_comp_10'
     #load_res = data.load_instance(directory,filename)
     #data.sinlge_plot(directory1,'particle_data_rhoP800_dP1e-06_V010000.0_T0.000644946677103762_phi0_wf_one_plus_sin_ff_linear.pkl')
     #data.plot_trajectory(directory1,'particle_data_rhoP800_dP1e-06_V010000.0_T0.000644946677103762_phi0_wf_one_plus_sin_ff_linear.pkl')
-    #data.compare_final_x(directory1,'rhoP',[800,1200,1600,2000])
-    #data.process_directory(directory1,n_interval=10)
+    #data.process_directory(directory3,n_interval=10)
+    #compare_final_x_minus_dc doesn't currently work with compressed data. NEED TO BE FIXED
+
     variable_dict = {
-        'rhoP': [800],
-        'dP': [1e-6]
+        'rhoP': [800,2000],
+        'dP': [1e-6,5e-7]
     }
-    data.compare_final_x_minus_dc(directory1,variable_dict,minus_DC=True,normalizeDC=True,comp = False)
+    data.compare_final_x_minus_dc(directory3,variable_dict,minus_DC=True,normalizeDC=True,comp = False)
     print('time',duration)
     #print(res)
