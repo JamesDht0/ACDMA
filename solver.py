@@ -69,15 +69,13 @@ def simulate_single(parameters, waveform, flowfield, dt, n_steps,x0,u0):
     return instance
 
 
-def simulate_single_phase_averaged(parameters, waveform, flowfield, dt, n_steps, x0, u0, save_interval=10):
+def simulate_single_phase_averaged(parameters, waveform, flowfield, dt, n_steps, x0, u0):
     # This code will loop over computing each value for phi, neglecting the assigned phi value in parameters
     # If multiple values of phi are set in the parameter dict, multiple files of the same content will be generated
 
-    n_saved_points = n_steps // save_interval + (1 if n_steps % save_interval != 0 else 0)
-
-    sum_trajectory = np.zeros((n_saved_points, 2))
-    sum_velocity = np.zeros((n_saved_points, 2))
-    sum_time_points = np.zeros(n_saved_points)
+    sum_trajectory = np.zeros((n_steps, 2))
+    sum_velocity = np.zeros((n_steps, 2))
+    sum_time_points = np.zeros(n_steps)
     phis = (np.array([0, 1 / 4, 1 / 2, 3 / 4, 1, 5 / 4, 6 / 4, 7 / 4]) * math.pi).tolist()
 
     par_val_avg = SimpleNamespace(**parameters)
@@ -88,20 +86,17 @@ def simulate_single_phase_averaged(parameters, waveform, flowfield, dt, n_steps,
 
         x = x0
         u = u0
-        trajectory = np.zeros((n_saved_points, 2))
-        velocity = np.zeros((n_saved_points, 2))
-        time_points = np.zeros(n_saved_points)
+        trajectory = np.zeros((n_steps, 2))
+        velocity = np.zeros((n_steps, 2))
+        time_points = np.zeros(n_steps)
         t = 0
         state = np.array([x0[0], x0[1], u0[0], u0[1]])
 
         save_idx = 0
         for i in range(n_steps):
-            if i % save_interval == 0 or i == n_steps - 1:  # Save the last point if not at save interval
-                trajectory[save_idx] = x
-                velocity[save_idx] = u
-                time_points[save_idx] = t
-                save_idx += 1
-
+            trajectory[i] = x
+            velocity[i] = u
+            time_points[i] = t
             state = rk4_step(par_val.rhoP, par_val.dP, par_val.V0, par_val.T, par_val.phi, waveform, flowfield, t, dt,
                              state)
             x = state[:2]

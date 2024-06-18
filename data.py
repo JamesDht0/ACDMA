@@ -145,7 +145,7 @@ def plot_trajectory(directory,filename):
     plt.figure()
     plt.plot(data.trajectory[:,0],data.time_points)
     plt.show()
-def extract_parameters(filename, foldername, compressed = True):
+def extract_parameters(filename, foldername, compressed):
     # Define the regular expression pattern based on the filename format
 
     if compressed:
@@ -200,7 +200,7 @@ def extract_parameters(filename, foldername, compressed = True):
         return parameters, dt, nsteps, x0, u0, waveform, flowfield
     else:
         raise ValueError("Filename or folder name does not match the expected pattern")
-def compare_final_x_minus_dc(directory, variable_dict, minus_DC = True, normalizeDC = True,compressed = True):
+def compare_final_x_minus_dc(directory, variable_dict, minus_DC = True, normalizeDC = True,comp = True):
     fig, axs = plt.subplots(2, 1, figsize=(10, 8))
 
     keys, values = zip(*variable_dict.items())
@@ -209,7 +209,7 @@ def compare_final_x_minus_dc(directory, variable_dict, minus_DC = True, normaliz
     for combination in combinations:
         label = ", ".join([f"{key}={value}" for key, value in combination.items()])
 
-        matching_files = filter_filenames_by_variables(directory, combination)
+        matching_files = filter_filenames_by_variables(directory, combination,comp)
         print(f"Combination: {combination}")
         print(f"Matching files: {matching_files}")
 
@@ -223,17 +223,15 @@ def compare_final_x_minus_dc(directory, variable_dict, minus_DC = True, normaliz
             with open(filepath, 'rb') as file:
                 data.append(pickle.load(file))
 
-        DC_params, dt, n_step, x0, u0, waveform, flowfield = extract_parameters(matching_files[0], directory,compressed=compressed)
-
-        DC_params['waveform'] = 'DC'
-
-
+        DC_params, dt, n_step, x0, u0, waveform, flowfield = extract_parameters(matching_files[0], directory,compressed=comp)
+        print('**********',DC_params)
+        DC_params['T'] = 0.0
         final_r = []
         final_z = []
         T = []
 
         if minus_DC:
-            DCdata = solver.simulate_single(DC_params, functions.DC, flowfield, dt, n_step, x0, u0)
+            DCdata = find_DC_file_with_parameters(directory, DC_params, compressed=comp)
             DC_final_r = DCdata.trajectory[-1, 0]
             DC_final_z = DCdata.trajectory[-1, 1]
             if normalizeDC:
@@ -249,7 +247,7 @@ def compare_final_x_minus_dc(directory, variable_dict, minus_DC = True, normaliz
 
         else:
             if normalizeDC:
-                DCdata = solver.simulate_single(DC_params, functions.DC, flowfield, dt, n_step, x0, u0)
+                DCdata = find_DC_file_with_parameters(directory, DC_params, compressed=comp)
                 DC_final_r = DCdata.trajectory[-1, 0]
                 DC_final_z = DCdata.trajectory[-1, 1]
                 for d in data:
@@ -264,9 +262,10 @@ def compare_final_x_minus_dc(directory, variable_dict, minus_DC = True, normaliz
 
 
         order = np.argsort(T)
-        final_r_sorted = np.array(final_r)[order]
-        final_z_sorted = np.array(final_z)[order]
-        T_sorted = np.array(T)[order]
+        final_r_sorted = np.array(final_r)[order][1:]
+        final_z_sorted = np.array(final_z)[order][1:]
+        T_sorted = np.array(T)[order][1:]
+
         axs[0].plot(T_sorted, final_r_sorted, label=label)
         axs[1].plot(T_sorted, final_z_sorted, label=label)
 
@@ -284,12 +283,12 @@ def compare_final_x_minus_dc(directory, variable_dict, minus_DC = True, normaliz
 
     plt.tight_layout()
     plt.show()
-def filter_filenames_by_variables(directory, variable_dict):
+def filter_filenames_by_variables(directory, variable_dict,compressed):
     matching_files = []
     for filename in os.listdir(directory):
         if filename.endswith('.pkl'):
             try:
-                parameters, _, _, _, _, _, _ = extract_parameters(filename, directory)
+                parameters, _, _, _, _, _, _ = extract_parameters(filename, directory, compressed)
                 print(f"Checking file: {filename}")
                 print(f"Extracted parameters: {parameters}")
                 if all(parameters.get(k) == v for k, v in variable_dict.items()):
@@ -348,3 +347,18 @@ def process_directory(input_directory, n_interval):
                 pickle.dump(new_data, f)
 
     print(f"Processing complete. Processed files are saved in {output_directory}")
+def find_DC_file_with_parameters(directory, target_params, compressed=True):
+    for filename in os.listdir(directory):
+        if filename.endswith('.pkl'):
+            try:
+                params, dt, nsteps, x0, u0, waveform, flowfield = extract_parameters(filename, directory, compressed=compressed)
+                if params and params['T'] == 0.0:
+                    match = all(params[key] == value for key, value in target_params.items() if key in params)
+                    if match:
+                        filepath = os.path.join(directory, filename)
+                        with open(filepath, 'rb') as f:
+                            data = pickle.load(f)
+                        return data
+            except ValueError as e:
+                print(f"Error processing file {filename}: {e}")
+    return None
