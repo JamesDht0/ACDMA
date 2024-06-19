@@ -31,6 +31,13 @@ def _05_plus_sin(V0,T,t,phi):
         return -V0*2*(1/2+np.sin(phase))
     else:
         return -V0
+def N_plus_sin(V0,T,t,phi):
+    N = 2
+    if T != 0:
+        phase = 2 * math.pi * t / T + phi
+        return -V0*(1+N*np.sin(phase))
+    else:
+        return -V0
 
 def abs_sine(V0,T,t,phi):
 
@@ -87,7 +94,8 @@ waveform_functions = {
     'half_sawtooth': half_sawtooth,
     '_075_plus_sin': _075_plus_sin,
     '_05_plus_sin': _05_plus_sin,
-    'abs_sine' : abs_sine
+    'abs_sine' : abs_sine,
+    'N_plus_sin': N_plus_sin
 }
 
 flowfield_functions = {

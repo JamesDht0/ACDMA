@@ -369,7 +369,7 @@ def find_closest(array, value):
     index = np.argmin(differences)
     return array[index]
 
-
+## NOT DONE YET
 def separation_over_time(directory, variable_dict,T_plot_list, normalizeDC = True, comp = False):
     fig, axs = plt.subplots(2, 1, figsize=(10, 8))
 
@@ -435,5 +435,75 @@ def separation_over_time(directory, variable_dict,T_plot_list, normalizeDC = Tru
 
     axs[1].legend()
 
+    plt.tight_layout()
+    plt.show()
+
+def compare_final_energy(directory, variable_dict, minus_DC = True, normalizeDC = True,comp = True):
+    plt.figure(figsize=(10, 6))
+    keys, values = zip(*variable_dict.items())
+    combinations = [dict(zip(keys, v)) for v in product(*values)]
+
+    for combination in combinations:
+        label = ", ".join([f"{key}={value}" for key, value in combination.items()])
+
+        matching_files = filter_filenames_by_variables(directory, combination,comp)
+        print(f"Combination: {combination}")
+        print(f"Matching files: {matching_files}")
+
+        if not matching_files:
+            print(f"No matching files for combination: {combination}")
+            continue
+
+        data = []
+        for pkl_file in matching_files:
+            filepath = os.path.join(directory, pkl_file)
+            with open(filepath, 'rb') as file:
+                data.append(pickle.load(file))
+
+        DC_params, dt, n_step, x0, u0, waveform, flowfield = extract_parameters(matching_files[0], directory,compressed=comp)
+        print('**********',DC_params)
+        DC_params['T'] = 0.0
+        final_energy = []
+        T = []
+
+        if minus_DC:
+            DCdata = find_DC_file_with_parameters(directory, DC_params, compressed=comp)
+            # energy in the form of 0.5*(vr^2 + vz^2)*rhoP*dP^3 /6
+            DC_final_energy = 0.5*(DCdata.velocity[-1, 0]**2 + DCdata.velocity[-1, 1]**2)*DCdata.rhoP*(DCdata.dP)**3 /6
+            if normalizeDC:
+                for d in data:
+                    final_energy.append(0.5*((d.velocity[-1,0]**2 + d.velocity[-1,1]**2)*d.rhoP*(d.dP)**3 /6)/DC_final_energy-1)
+                    T.append(d.T)
+            else:
+                for d in data:
+                    final_energy.append(0.5*((d.velocity[-1,0]**2 + d.velocity[-1,1]**2*d.rhoP*(d.dP))**3 /6)-DC_final_energy)
+                    T.append(d.T)
+
+        else:
+            if normalizeDC:
+                DCdata = find_DC_file_with_parameters(directory, DC_params, compressed=comp)
+                DC_final_energy = 0.5 * (DCdata.velocity[-1, 0] ** 2 + DCdata.velocity[-1, 1] ** 2) * DCdata.rhoP * (
+                    DCdata.dP) ** 3 / 6
+                for d in data:
+                    final_energy.append(0.5 * ((d.velocity[-1, 0] ** 2 + d.velocity[-1, 1] ** 2) * d.rhoP * (
+                        d.dP) ** 3 / 6) / DC_final_energy)
+                    T.append(d.T)
+            else:
+                for d in data:
+                    final_energy.append(0.5 * ((d.velocity[-1, 0] ** 2 + d.velocity[-1, 1] ** 2) * d.rhoP * (
+                        d.dP) ** 3 / 6))
+                    T.append(d.T)
+
+
+        order = np.argsort(T)
+        final_energy_sorted = np.array(final_energy)[order][1:]
+        T_sorted = np.array(T)[order][1:]
+
+        plt.plot(T_sorted, final_energy_sorted, label=label)
+
+    plt.xlabel('T')
+    plt.ylabel('Kinetic Energy')
+    plt.xscale('log')
+    plt.legend()
     plt.tight_layout()
     plt.show()
