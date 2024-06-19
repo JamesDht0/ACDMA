@@ -397,8 +397,8 @@ def separation_over_time(directory, variable_dict,T_plot_list, minus_DC = True, 
         for T in T_plot_list:
             for i in range(0,len(data)):
                 if data[i].T <= T < data[i + 1].T:
-                    axs[0].plot(data[i].time_points,data[i].trajectory[:,0]-DCdata.trajectory[:,0],label = label)
-                    axs[1].plot(data[i].time_points, data[i].trajectory[:, 1]-DCdata.trajectory[:,0], label= label)
+                    axs[0].plot(data[i].time_points,data[i].trajectory[:,0]/DCdata.trajectory[:,0]-1,label = label)
+                    axs[1].plot(data[i].time_points, data[i].trajectory[:, 1]/DCdata.trajectory[:,0]-1, label= label)
 
                     break
     axs[0].set_xlabel('t')
@@ -411,7 +411,6 @@ def separation_over_time(directory, variable_dict,T_plot_list, minus_DC = True, 
 
     plt.tight_layout()
     plt.show()
-
 def separation_rate_over_time(directory, variable_dict,T_plot_list, minus_DC = True, normalizeDC = True, comp = False):
     fig, axs = plt.subplots(2, 1, figsize=(10, 8))
 
@@ -447,8 +446,8 @@ def separation_rate_over_time(directory, variable_dict,T_plot_list, minus_DC = T
 
             window = int(closestT/dt)
 
-            axs[0].plot(data[iplot].time_points[int(window):-int(window)],moving_average(data[iplot].velocity[:,0]-DCdata.velocity[:,0],window)[int(window):-int(window)],label = label)
-            axs[1].plot(data[iplot].time_points[int(window):-int(window)],moving_average(data[iplot].velocity[:, 1]-DCdata.velocity[:,1],window)[int(window):-int(window)],label= label)
+            axs[0].plot(data[iplot].time_points[int(window):-int(window)],moving_average(data[iplot].velocity[:,0]/DCdata.velocity[:,0]-1,window)[int(window):-int(window)],label = label)
+            axs[1].plot(data[iplot].time_points[int(window):-int(window)],moving_average(data[iplot].velocity[:, 1]/DCdata.velocity[:,1]-1,window)[int(window):-int(window)],label= label)
             print('averaged by window size',window)
             print('plot for T =',closestT)
 
@@ -539,6 +538,51 @@ def compare_final_energy(directory, variable_dict, minus_DC = True, normalizeDC 
     plt.xlabel('T')
     plt.ylabel('Kinetic Energy')
     plt.xscale('log')
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+def energy_over_time(directory, variable_dict,T_plot_list, minus_DC = True, normalizeDC = True, comp = False):
+    plt.figure(figsize=(10, 6))
+
+    keys, values = zip(*variable_dict.items())
+    combinations = [dict(zip(keys, v)) for v in product(*values)]
+
+    for combination in combinations:
+        label = ", ".join([f"{key}={value}" for key, value in combination.items()])
+
+        matching_files = filter_filenames_by_variables(directory, combination, comp)
+        print(f"Combination: {combination}")
+        print(f"Matching files: {matching_files}")
+
+        if not matching_files:
+            print(f"No matching files for combination: {combination}")
+            continue
+
+        data = []
+        for pkl_file in matching_files:
+            filepath = os.path.join(directory, pkl_file)
+            with open(filepath, 'rb') as file:
+                data.append(pickle.load(file))
+
+        DC_params, dt, n_step, x0, u0, waveform, flowfield = extract_parameters(matching_files[0], directory,compressed=comp)
+        DC_params['T'] = 0.0
+        DCdata = find_DC_file_with_parameters(directory, DC_params, compressed=comp)
+
+        for T in T_plot_list:
+            diff = []
+            for i in range(0,len(data)):
+                diff.append(abs(data[i].T-T))
+            iplot = np.argmin(diff)
+            closestT = data[iplot].T
+
+            window = int(closestT/dt)
+            energy = moving_average((data[iplot].velocity[:,0]**2+data[iplot].velocity[:, 1]**2)/(DCdata.velocity[:,0]**2+DCdata.velocity[:,1]**2)-1,window)[int(window):-int(window)]
+            print('averaged by window size',window)
+            print('plot for T =',closestT)
+            plt.plot(data[iplot].time_points[int(window):-int(window)], energy, label=label)
+
+    plt.xlabel('t')
+    plt.ylabel('Kinetic Energy')
     plt.legend()
     plt.tight_layout()
     plt.show()
