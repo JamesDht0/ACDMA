@@ -362,15 +362,13 @@ def find_DC_file_with_parameters(directory, target_params, compressed=True):
             except ValueError as e:
                 print(f"Error processing file {filename}: {e}")
     return None
-
 def find_closest(array, value):
     array = np.array(array)
     differences = np.abs(array - value)
     index = np.argmin(differences)
     return array[index]
-
 ## NOT DONE YET
-def separation_over_time(directory, variable_dict,T_plot_list, normalizeDC = True, comp = False):
+def separation_over_time(directory, variable_dict,T_plot_list, minus_DC = True, normalizeDC = True, comp = False):
     fig, axs = plt.subplots(2, 1, figsize=(10, 8))
 
     keys, values = zip(*variable_dict.items())
@@ -395,49 +393,86 @@ def separation_over_time(directory, variable_dict,T_plot_list, normalizeDC = Tru
 
         DC_params, dt, n_step, x0, u0, waveform, flowfield = extract_parameters(matching_files[0], directory,                                                                        compressed=comp)
         DC_params['T'] = 0.0
-
-
-        final_r = []
-        final_z = []
-        T = []
-
         DCdata = find_DC_file_with_parameters(directory, DC_params, compressed=comp)
-        DC_final_r = DCdata.trajectory[-1, 0]
-        DC_final_z = DCdata.trajectory[-1, 1]
-        if normalizeDC:
-            for d in data:
-                final_r.append(d.trajectory[-1, 0] / DC_final_r - 1)
-                final_z.append(d.trajectory[-1, 1] / DC_final_z - 1)
-                T.append(d.T)
-        else:
-            for d in data:
-                final_r.append(d.trajectory[-1, 0] - DC_final_r)
-                final_z.append(d.trajectory[-1, 1] - DC_final_z)
-                T.append(d.T)
+        for T in T_plot_list:
+            for i in range(0,len(data)):
+                if data[i].T <= T < data[i + 1].T:
+                    axs[0].plot(data[i].time_points,data[i].trajectory[:,0]-DCdata.trajectory[:,0],label = label)
+                    axs[1].plot(data[i].time_points, data[i].trajectory[:, 1]-DCdata.trajectory[:,0], label= label)
 
-        order = np.argsort(T)
-        final_r_sorted = np.array(final_r)[order][1:]
-        final_z_sorted = np.array(final_z)[order][1:]
-        T_sorted = np.array(T)[order][1:]
-
-        axs[0].plot(T_sorted, final_r_sorted, label=label)
-        axs[1].plot(T_sorted, final_z_sorted, label=label)
-
-    axs[0].set_xlabel('T')
-    axs[0].set_ylabel('r-r_DC')
+                    break
+    axs[0].set_xlabel('t')
+    axs[0].set_ylabel('r')
     axs[0].autoscale()
-    axs[0].set_xscale('log')
-
-    axs[1].set_xlabel('T')
-    axs[1].set_ylabel('z-z_DC')
+    axs[1].set_xlabel('t')
+    axs[1].set_ylabel('z')
     axs[1].autoscale()
-    axs[1].set_xscale('log')
-
     axs[1].legend()
 
     plt.tight_layout()
     plt.show()
 
+def separation_rate_over_time(directory, variable_dict,T_plot_list, minus_DC = True, normalizeDC = True, comp = False):
+    fig, axs = plt.subplots(2, 1, figsize=(10, 8))
+
+    keys, values = zip(*variable_dict.items())
+    combinations = [dict(zip(keys, v)) for v in product(*values)]
+
+    for combination in combinations:
+        label = ", ".join([f"{key}={value}" for key, value in combination.items()])
+
+        matching_files = filter_filenames_by_variables(directory, combination, comp)
+        print(f"Combination: {combination}")
+        print(f"Matching files: {matching_files}")
+
+        if not matching_files:
+            print(f"No matching files for combination: {combination}")
+            continue
+
+        data = []
+        for pkl_file in matching_files:
+            filepath = os.path.join(directory, pkl_file)
+            with open(filepath, 'rb') as file:
+                data.append(pickle.load(file))
+
+        DC_params, dt, n_step, x0, u0, waveform, flowfield = extract_parameters(matching_files[0], directory,compressed=comp)
+        DC_params['T'] = 0.0
+        DCdata = find_DC_file_with_parameters(directory, DC_params, compressed=comp)
+        for T in T_plot_list:
+            diff = []
+            for i in range(0,len(data)):
+                diff.append(abs(data[i].T-T))
+            iplot = np.argmin(diff)
+            closestT = data[iplot].T
+
+            window = int(closestT/dt)
+
+            axs[0].plot(data[iplot].time_points[int(window):-int(window)],moving_average(data[iplot].velocity[:,0]-DCdata.velocity[:,0],window)[int(window):-int(window)],label = label)
+            axs[1].plot(data[iplot].time_points[int(window):-int(window)],moving_average(data[iplot].velocity[:, 1]-DCdata.velocity[:,1],window)[int(window):-int(window)],label= label)
+            print('averaged by window size',window)
+            print('plot for T =',closestT)
+
+
+    axs[0].set_xlabel('t')
+    axs[0].set_ylabel('vr')
+    axs[0].autoscale()
+    axs[1].set_xlabel('t')
+    axs[1].set_ylabel('vz')
+    axs[1].autoscale()
+    axs[1].legend()
+
+    plt.tight_layout()
+    plt.show()
+def moving_average(data, window_size):
+    if window_size % 2 == 0:
+        window_size += 1
+
+        # Pad the data at both ends to maintain the same length
+    pad_size = window_size // 2
+    padded_data = np.pad(data, (pad_size, pad_size), mode='edge')
+    smoothed_data = np.convolve(padded_data, np.ones(window_size) / window_size, mode='valid')
+
+    return smoothed_data
 def compare_final_energy(directory, variable_dict, minus_DC = True, normalizeDC = True,comp = True):
     plt.figure(figsize=(10, 6))
     keys, values = zip(*variable_dict.items())

@@ -62,9 +62,10 @@ if __name__ == '__main__':
     variable_dict = {
         'rhoP': [800,2000],
         'dP': [1e-6],
-        'V0': [1e4,1e3]
+        'V0': [1e4]
     }
-    data.compare_final_x_minus_dc(directory3,variable_dict,minus_DC=True,normalizeDC=True,comp = False)
-    data.compare_final_energy(directory7,variable_dict,minus_DC=True,normalizeDC=True,comp = False)
+    data.separation_rate_over_time(directory3,variable_dict,T_plot_list=[2e-4],minus_DC=True,normalizeDC=True,comp = False)
+    #data.compare_final_x_minus_dc(directory3,variable_dict,minus_DC=True,normalizeDC=True,comp = False)
+    #data.compare_final_energy(directory7,variable_dict,minus_DC=True,normalizeDC=True,comp = False)
     print('time',duration)
     #print(res)
