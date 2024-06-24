@@ -28,14 +28,14 @@ def _05_plus_sin(V0,T,t,phi):
 
     if T != 0:
         phase = 2 * math.pi * t / T + phi
-        return -V0*2*(1/2+np.sin(phase))
+        return -V0*(1+2*np.sin(phase))
     else:
         return -V0
 def N_plus_sin(V0,T,t,phi):
-    N = 2
+    N = 3
     if T != 0:
         phase = 2 * math.pi * t / T + phi
-        return -V0*(1+N*np.sin(phase))
+        return -V0*(1+(1/N)*np.sin(phase))
     else:
         return -V0
 
@@ -85,6 +85,14 @@ def linear(x):
     v0 = 2
     # V0 is the velocity at r = 0
     return np.array([0,v0+gradv*x[0]])
+
+def linear_offset(x):
+    gradv = -100
+    v0 = 2
+    v_offset = 1
+    # V0 is the velocity at r = 0
+    return np.array([0,v_offset+v0+gradv*x[0]])
+
 def const(x):
     return np.array([0,1])
 
@@ -100,7 +108,8 @@ waveform_functions = {
 
 flowfield_functions = {
     'linear': linear,
-    'const': const
+    'const': const,
+    'linear_offset' : linear_offset
 }
 
 

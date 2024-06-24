@@ -116,7 +116,7 @@ def final_x_T(directory):
         final_z.append(data[i].trajectory[-1,1])
         T.append(data[i].T)
 
-    order  = np.argsort(T)
+    order = np.argsort(T)
     final_r_sorted = np.array(final_r)[order]
     final_z_sorted = np.array(final_z)[order]
     T_sorted = np.array(T)[order]
@@ -236,8 +236,8 @@ def compare_final_x_minus_dc(directory, variable_dict, minus_DC = True, normaliz
             DC_final_z = DCdata.trajectory[-1, 1]
             if normalizeDC:
                 for d in data:
-                    final_r.append(d.trajectory[-1, 0]/DC_final_r - 1)
-                    final_z.append(d.trajectory[-1, 1]/DC_final_z - 1)
+                    final_r.append((d.trajectory[-1, 0]-x0[0])/(DC_final_r-x0[0]) - 1)
+                    final_z.append((d.trajectory[-1, 1]-x0[1])/(DC_final_z-x0[1]) - 1)
                     T.append(d.T)
             else:
                 for d in data:
@@ -251,8 +251,8 @@ def compare_final_x_minus_dc(directory, variable_dict, minus_DC = True, normaliz
                 DC_final_r = DCdata.trajectory[-1, 0]
                 DC_final_z = DCdata.trajectory[-1, 1]
                 for d in data:
-                    final_r.append(d.trajectory[-1, 0]/DC_final_r)
-                    final_z.append(d.trajectory[-1, 1]/DC_final_z)
+                    final_r.append((d.trajectory[-1, 0]-x0[0])/(DC_final_r-x0[0]))
+                    final_z.append((d.trajectory[-1, 1]-x0[1])/(DC_final_z-x0[1]))
                     T.append(d.T)
             else:
                 for d in data:
