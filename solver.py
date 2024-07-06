@@ -5,6 +5,7 @@ from types import SimpleNamespace
 import data
 import os
 from multiprocessing import Pool
+from tqdm import tqdm
 
 mu = 1.73e-5 # viscosity of air
 qP = 1.6e-19 # unit charge on a particle
@@ -122,6 +123,7 @@ def simulate_single_phase_averaged(parameters, waveform, flowfield, dt, n_steps,
         os.makedirs(directory)
 
     data.save_instance(instance, directory, filename)
+    print(f'saved_file{filename}')
 
     return sum_trajectory / len(phis), sum_velocity / len(phis), sum_time_points / len(phis)
 
@@ -135,8 +137,8 @@ def generate_combinations(parameters):
 def sweep(parameters,partial_func):
     # generate_combinations should be used with list() to return a list of dictionaries, each containing a combination
     par_comb = list(generate_combinations(parameters))
-    with Pool(processes=128) as pool:
-        results = list(pool.map(partial_func, par_comb))
+    with Pool(processes=10) as pool:
+        results = list(tqdm(pool.map(partial_func, par_comb), total=len(par_comb)))
 
     return results
 # the sweep function returns the result in the format of :

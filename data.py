@@ -283,6 +283,7 @@ def compare_final_x_minus_dc(directory, variable_dict, minus_DC = True, normaliz
 
     plt.tight_layout()
     plt.show()
+
 def filter_filenames_by_variables(directory, variable_dict,compressed):
     matching_files = []
     for filename in os.listdir(directory):
@@ -367,8 +368,7 @@ def find_closest(array, value):
     differences = np.abs(array - value)
     index = np.argmin(differences)
     return array[index]
-## NOT DONE YET
-def separation_over_time(directory, variable_dict,T_plot_list, minus_DC = True, normalizeDC = True, comp = False):
+def separation_over_time(directory, variable_dict,T_plot_list, minus_DC = True, normalizeDC = True, comp = False, fitting = False):
     fig, axs = plt.subplots(2, 1, figsize=(10, 8))
 
     keys, values = zip(*variable_dict.items())
@@ -395,12 +395,55 @@ def separation_over_time(directory, variable_dict,T_plot_list, minus_DC = True, 
         DC_params['T'] = 0.0
         DCdata = find_DC_file_with_parameters(directory, DC_params, compressed=comp)
         for T in T_plot_list:
-            for i in range(0,len(data)):
-                if data[i].T <= T < data[i + 1].T:
-                    axs[0].plot(data[i].time_points,data[i].trajectory[:,0]/DCdata.trajectory[:,0]-1,label = label)
-                    axs[1].plot(data[i].time_points, data[i].trajectory[:, 1]/DCdata.trajectory[:,0]-1, label= label)
+            diff = []
+            for i in range(0, len(data)):
+                diff.append(abs(data[i].T - T))
+            iplot = np.argmin(diff)
+            closestT = data[iplot].T
+            time_points = data[iplot].time_points
+            r_plot=[]
+            z_plot=[]
+            if minus_DC:
+                if normalizeDC:
+                    r_plot = (data[iplot].trajectory[:, 0]-x0[0]) / (DCdata.trajectory[:, 0]-x0[0]) - 1
+                    z_plot = (data[iplot].trajectory[:, 1]-x0[1]) / (DCdata.trajectory[:, 1]-x0[1]) - 1
+                else:
+                    r_plot = (data[iplot].trajectory[:, 0]) - (DCdata.trajectory[:, 0])
+                    z_plot = (data[iplot].trajectory[:, 1]) - (DCdata.trajectory[:, 1])
+            else:
+                if normalizeDC:
+                    r_plot = (data[iplot].trajectory[:, 0] - x0[0]) / (DCdata.trajectory[:, 0] - x0[0])
+                    z_plot = (data[iplot].trajectory[:, 1] - x0[1]) / (DCdata.trajectory[:, 1] - x0[1])
+                else:
+                    r_plot = (data[iplot].trajectory[:, 0])
+                    z_plot = (data[iplot].trajectory[:, 1])
 
-                    break
+            axs[0].plot(time_points[100000:],
+                        r_plot[100000:]
+                        , label=label)
+            axs[1].plot(time_points[100000:],
+                        z_plot[100000:]
+                        , label=label)
+            if fitting:
+                r_fit_func, r_coeff = fit_polynomial_fraction(time_points,
+                                                              r_plot,
+                                                         poly_degree=1, frac_range=(1 / 8, 1))
+
+                z_fit_func, z_coeff = fit_polynomial_fraction(time_points,
+                                                              z_plot,
+                                                         poly_degree=1, frac_range=(1 / 8, 1))
+
+                t_fit = np.linspace(min(data[iplot].time_points), max(data[iplot].time_points), 1000)
+                r_poly_fit = r_fit_func(t_fit)
+                z_poly_fit = z_fit_func(t_fit)
+
+                axs[0].plot(t_fit,r_poly_fit,label = f"r_fitted_coeff = {r_coeff} ")
+                axs[1].plot(t_fit, z_poly_fit, label=f"z_fitted_coeff = {z_coeff} ")
+                print(f"r_fitted_coeff = {r_coeff}")
+                print(f"z_fitted_coeff = {z_coeff}")
+
+            print('plot for T =', closestT)
+
     axs[0].set_xlabel('t')
     axs[0].set_ylabel('r')
     axs[0].autoscale()
@@ -411,6 +454,21 @@ def separation_over_time(directory, variable_dict,T_plot_list, minus_DC = True, 
 
     plt.tight_layout()
     plt.show()
+
+def fit_polynomial_fraction(t,x, poly_degree=2, frac_range=(1 / 8, 7 / 8)):
+    # Determine the start and end indices based on the fraction range
+    start_idx = int(len(x) * frac_range[0])
+    end_idx = int(len(x) * frac_range[1])
+
+    # Filter the data
+    x_filtered = x[start_idx:end_idx:5]
+    t_filtered = t[start_idx:end_idx:5]
+
+    # Polynomial fit
+    poly_coeffs = np.polyfit(t_filtered, x_filtered, poly_degree)
+    poly_fit = np.poly1d(poly_coeffs)
+
+    return poly_fit, poly_coeffs
 def separation_rate_over_time(directory, variable_dict,T_plot_list, minus_DC = True, normalizeDC = True, comp = False):
     fig, axs = plt.subplots(2, 1, figsize=(10, 8))
 

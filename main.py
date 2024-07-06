@@ -13,7 +13,7 @@ parameters1 = {
     "phi" : [0],
     "V0" : [1000],
     #"T" : np.linspace(1e-4, 10e-4, 100).tolist()
-    "T" : sorted(np.logspace(-6, -3, num=7, base=10).tolist() + [0.00])
+    "T" : sorted(np.logspace(-6, -3, num=8, base=10).tolist() + [0.00])
 }
 
 parameters2 = {
@@ -25,8 +25,8 @@ parameters2 = {
 }
 
 
-waveform = functions.one_plus_sin
-flowfield = functions.linear_offset
+waveform = functions.smoothed_square_wave
+flowfield = functions.linear
 dt = 1e-7
 n_steps = int(1e6)
 # 40s for one particle running 1e6 steps
@@ -44,17 +44,18 @@ if __name__ == '__main__':
 
     # run solver with parameter, ff and wf
     start_time = time.time()
-    #solver.sweep(parameters1,simulate_single_phi_avg_partial)
+    solver.sweep(parameters1,simulate_single_phi_avg_partial)
     duration = time.time() - start_time
 
 
     directory3 = 'raw/wf_one_plus_sin_ff_linear_dt_1e-07_nsteps_1000000_x0_[0.01, 0]_u0_[0, 0]'
     directory4 = 'raw/wf__075_plus_sin_ff_linear_dt_1e-07_nsteps_1000000_x0_[0.01, 0]_u0_[0, 0]'
-    directory5 = 'raw/wf_half_sawtooth_ff_linear_dt_1e-07_nsteps_1000000_x0_[0.01, 0]_u0_[0, 0]'
+    directory5 = 'raw/wf_smoothed_half_sawtooth_ff_linear_dt_1e-07_nsteps_1000000_x0_[0.01, 0]_u0_[0, 0]'
     directory6 = 'raw/wf__05_plus_sin_ff_linear_dt_1e-07_nsteps_1000000_x0_[0.01, 0]_u0_[0, 0]'
-    directory7 = 'raw/wf_N_plus_sin_ff_linear_dt_1e-07_nsteps_1000000_x0_[0.01, 0]_u0_[0, 0]'
     directory8 = 'raw/wf_N_plus_sin_ff_linear_dt_1e-07_nsteps_1000000_x0_[0.01, 0]_u0_[0, 0]'
     directory9 = 'raw/wf_one_plus_sin_ff_linear_offset_dt_1e-07_nsteps_1000000_x0_[0.01, 0]_u0_[0, 0]'
+    directory10 = 'raw/wf_smoothed_half_sawtooth_ff_linear_dt_1e-07_nsteps_1000000_x0_[0.01, 0]_u0_[0, 0]'
+    directory11 = 'raw/wf_square_wave_ff_linear_dt_1e-07_nsteps_1000000_x0_[0.01, 0]_u0_[0, 0]'
     #load_res = data.load_instance(directory,filename)
     #data.sinlge_plot(directory1,'particle_data_rhoP800_dP1e-06_V010000.0_T0.000644946677103762_phi0_wf_one_plus_sin_ff_linear.pkl')
     #data.plot_trajectory(directory1,'particle_data_rhoP800_dP1e-06_V010000.0_T0.000644946677103762_phi0_wf_one_plus_sin_ff_linear.pkl')
@@ -66,10 +67,10 @@ if __name__ == '__main__':
         'dP': [1e-6],
         'V0': [1000]
     }
-    #data.separation_over_time(directory8,variable_dict,T_plot_list=[2e-4],minus_DC=True,normalizeDC=True,comp = False)
+    #data.separation_over_time(directory11,variable_dict,T_plot_list=[1e-4],minus_DC=True,normalizeDC=False,comp = False,fitting=False)
     #data.separation_rate_over_time(directory8,variable_dict,T_plot_list=[2e-4],minus_DC=True,normalizeDC=True,comp = False)
     #data.energy_over_time(directory8,variable_dict,T_plot_list=[2e-4],minus_DC=True,normalizeDC=True,comp = False)
-    data.compare_final_x_minus_dc(directory9,variable_dict,minus_DC=True,normalizeDC=True,comp = False)
+    data.compare_final_x_minus_dc(directory11,variable_dict,minus_DC=True,normalizeDC=True,comp = False)
     #data.compare_final_energy(directory8,variable_dict,minus_DC=True,normalizeDC=True,comp = False)
     print('time',duration)
     #print(res)
