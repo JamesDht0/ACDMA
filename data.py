@@ -200,7 +200,7 @@ def extract_parameters(filename, foldername, compressed):
         return parameters, dt, nsteps, x0, u0, waveform, flowfield
     else:
         raise ValueError("Filename or folder name does not match the expected pattern")
-def compare_final_x_minus_dc(directory, variable_dict, minus_DC = True, normalizeDC = True,comp = True):
+def compare_final_x_minus_dc(directory, variable_dict, minus_DC = True, normalizeDC = True,comp = True,N=1):
     fig, axs = plt.subplots(2, 1, figsize=(10, 8))
 
     keys, values = zip(*variable_dict.items())
@@ -232,34 +232,33 @@ def compare_final_x_minus_dc(directory, variable_dict, minus_DC = True, normaliz
 
         if minus_DC:
             DCdata = find_DC_file_with_parameters(directory, DC_params, compressed=comp)
-            DC_final_r = DCdata.trajectory[-1, 0]
-            DC_final_z = DCdata.trajectory[-1, 1]
+            DC_final_r = np.mean(DCdata.trajectory[-N, 0])
+            DC_final_z = np.mean(DCdata.trajectory[-N, 1])
             if normalizeDC:
                 for d in data:
-                    final_r.append((d.trajectory[-1, 0]-x0[0])/(DC_final_r-x0[0]) - 1)
-                    final_z.append((d.trajectory[-1, 1]-x0[1])/(DC_final_z-x0[1]) - 1)
+                    final_r.append((np.mean(d.trajectory[-N, 0])-x0[0])/(DC_final_r-x0[0]) - 1)
+                    final_z.append((np.mean(d.trajectory[-N, 1])-x0[1])/(DC_final_z-x0[1]) - 1)
                     T.append(d.T)
             else:
                 for d in data:
-                    final_r.append(d.trajectory[-1, 0] - DC_final_r)
-                    final_z.append(d.trajectory[-1, 1] - DC_final_z)
+                    final_r.append(np.mean(d.trajectory[-N, 0]) - DC_final_r)
+                    final_z.append(np.mean(d.trajectory[-N, 1]) - DC_final_z)
                     T.append(d.T)
 
         else:
             if normalizeDC:
                 DCdata = find_DC_file_with_parameters(directory, DC_params, compressed=comp)
-                DC_final_r = DCdata.trajectory[-1, 0]
-                DC_final_z = DCdata.trajectory[-1, 1]
+                DC_final_r = np.mean(DCdata.trajectory[-N, 0])
+                DC_final_z = np.mean(DCdata.trajectory[-N, 1])
                 for d in data:
-                    final_r.append((d.trajectory[-1, 0]-x0[0])/(DC_final_r-x0[0]))
-                    final_z.append((d.trajectory[-1, 1]-x0[1])/(DC_final_z-x0[1]))
+                    final_r.append((np.mean(d.trajectory[-N, 0])-x0[0])/(DC_final_r-x0[0]))
+                    final_z.append((np.mean(d.trajectory[-N, 1])-x0[1])/(DC_final_z-x0[1]))
                     T.append(d.T)
             else:
                 for d in data:
-                    final_r.append(d.trajectory[-1, 0])
-                    final_z.append(d.trajectory[-1, 1])
+                    final_r.append(np.mean(d.trajectory[-N, 0]))
+                    final_z.append(np.mean(d.trajectory[-N, 1]))
                     T.append(d.T)
-
 
         order = np.argsort(T)
         final_r_sorted = np.array(final_r)[order][1:]
@@ -283,7 +282,6 @@ def compare_final_x_minus_dc(directory, variable_dict, minus_DC = True, normaliz
 
     plt.tight_layout()
     plt.show()
-
 def filter_filenames_by_variables(directory, variable_dict,compressed):
     matching_files = []
     for filename in os.listdir(directory):
@@ -431,7 +429,7 @@ def separation_over_time(directory, variable_dict,T_plot_list, minus_DC = True, 
 
                 z_fit_func, z_coeff = fit_polynomial_fraction(time_points,
                                                               z_plot,
-                                                         poly_degree=1, frac_range=(1 / 8, 1))
+                                                         poly_degree=2, frac_range=(1 / 8, 1))
 
                 t_fit = np.linspace(min(data[iplot].time_points), max(data[iplot].time_points), 1000)
                 r_poly_fit = r_fit_func(t_fit)

@@ -6,6 +6,7 @@ import data
 import os
 from multiprocessing import Pool
 from tqdm import tqdm
+import time
 
 mu = 1.73e-5 # viscosity of air
 qP = 1.6e-19 # unit charge on a particle
@@ -74,6 +75,8 @@ def simulate_single_phase_averaged(parameters, waveform, flowfield, dt, n_steps,
     # This code will loop over computing each value for phi, neglecting the assigned phi value in parameters
     # If multiple values of phi are set in the parameter dict, multiple files of the same content will be generated
 
+    start_time = time.time()
+
     sum_trajectory = np.zeros((n_steps, 2))
     sum_velocity = np.zeros((n_steps, 2))
     sum_time_points = np.zeros(n_steps)
@@ -123,7 +126,8 @@ def simulate_single_phase_averaged(parameters, waveform, flowfield, dt, n_steps,
         os.makedirs(directory)
 
     data.save_instance(instance, directory, filename)
-    print(f'saved_file{filename}')
+    duration = time.time() - start_time
+    print(f'saved_file: {filename}, duration is: {duration}')
 
     return sum_trajectory / len(phis), sum_velocity / len(phis), sum_time_points / len(phis)
 

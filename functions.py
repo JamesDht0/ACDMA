@@ -22,6 +22,7 @@ class InterpolatingFunction:
         self.array_producing_function = array_producing_function
         self.x_values = x_values
         self.array = None  # The array will be produced and stored on the first call
+        self.mean = 0
         self.__name__ = array_producing_function.__name__[len("generate_"):]
 
     def __call__(self, V0,T,t,phi):
@@ -38,21 +39,21 @@ class InterpolatingFunction:
         if self.array is None:
             # First call: produce and store the array
             self.array = self.array_producing_function(self.x_values)
+            self.mean = np.mean(self.array)
         if T != 0:
-            phase = (t%T + phi)%1
+            phase = (t%T/T + phi/(2*math.pi))%1
 
             # Interpolate using the stored array
             interpolated_value = np.interp(phase, self.x_values, self.array)
 
-            interpolated_value *= V0
+            interpolated_value *= -V0
             return interpolated_value
         else:
-            return V0
+            return -V0*self.mean
 
-# Example array producing function
-def generate_smoothed_sqaure_wave(x_values):
-    a = 0.9
-    sigma = 100
+def generate_smoothed_square_wave(x_values):
+    a = 0.6
+    sigma = 1000
     pos_constant = (1) / a+1
     neg_constant = (1) / (a - 1)+1
 
@@ -67,13 +68,13 @@ def generate_smoothed_sqaure_wave(x_values):
     smoothed_waveform = np.array(smoothed_waveform)
     smoothed_waveform = smoothed_waveform[len(waveform):2 * len(waveform)]
     # Adjust to preserve the mean
-    mean_original = np.mean(waveform)
     mean_smoothed = np.mean(smoothed_waveform)
-    smoothed_waveform += mean_original - mean_smoothed
+    smoothed_waveform += 1 - mean_smoothed
+    #print(np.mean(smoothed_waveform))
     return smoothed_waveform
 
 x_values = np.linspace(0,1,10000)
-smoothed_square_wave = InterpolatingFunction(generate_smoothed_sqaure_wave, x_values)
+smoothed_square_wave = InterpolatingFunction(generate_smoothed_square_wave, x_values)
 
 def DC(V0,T,t,phi):
     return -V0
@@ -102,7 +103,7 @@ def _05_plus_sin(V0,T,t,phi):
     else:
         return -V0
 def N_plus_sin(V0,T,t,phi):
-    N = 1000
+    N = 10000
     if T != 0:
         phase = 2 * math.pi * t / T + phi
         return -V0*(1+N*np.sin(phase))
@@ -167,10 +168,8 @@ def square_wave(V0,T,t,phi):
     else:
         return -V0
 
-
-
 def plot_waveform(waveform):
-    t_arr = np.linspace(0,3,5000)
+    t_arr = np.linspace(0,3,300)
     V = []
     V0 = 1
     T = 1
@@ -211,7 +210,7 @@ waveform_functions = {
     'abs_sine': abs_sine,
     'N_plus_sin': N_plus_sin,
     'square_wave': square_wave,
-    'smoothed_square_wave' : smoothed_square_wave
+    'smoothed_square_wave': smoothed_square_wave
 
 }
 
