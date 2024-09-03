@@ -1,12 +1,14 @@
 import pickle
 import os
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 from tkinter import Tk, StringVar, OptionMenu, Button, Label
 import re
 import numpy as np
 import functions
 import solver
 from itertools import product
+
 class particle_data:
     def __init__(self,rhoP,dP,phi,V0,T,trajectory,velocity,time_points,waveform,flowfield):
         self.rhoP = rhoP
@@ -208,7 +210,6 @@ def compare_final_x_minus_dc(directory, variable_dict, minus_DC = True, normaliz
 
     for combination in combinations:
         label = ", ".join([f"{key}={value}" for key, value in combination.items()])
-
         matching_files = filter_filenames_by_variables(directory, combination,comp)
         print(f"Combination: {combination}")
         print(f"Matching files: {matching_files}")
@@ -268,20 +269,110 @@ def compare_final_x_minus_dc(directory, variable_dict, minus_DC = True, normaliz
         axs[0].plot(T_sorted, final_r_sorted, label=label)
         axs[1].plot(T_sorted, final_z_sorted, label=label)
 
-    axs[0].set_xlabel('T')
-    axs[0].set_ylabel('r-r_DC')
+    axs[0].set_xlabel('T/s')
+    axs[0].set_ylabel('r')
     axs[0].autoscale()
     axs[0].set_xscale('log')
+    axs[0].set_title(f'r separation, normalized = {normalizeDC}')
 
-    axs[1].set_xlabel('T')
-    axs[1].set_ylabel('z-z_DC')
+    axs[1].set_xlabel('T/s')
+    axs[1].set_ylabel('z')
     axs[1].autoscale()
     axs[1].set_xscale('log')
-
+    axs[1].set_title(f'z separation, normalized = {normalizeDC}')
     axs[1].legend()
 
     plt.tight_layout()
     plt.show()
+
+def spherical_compare_final_x_minus_dc(directory, variable_dict, minus_DC = True, normalizeDC = True,comp = True,N=1,ignore_final = int(0)):
+    fig, axs = plt.subplots(2, 1, figsize=(10, 8))
+
+    keys, values = zip(*variable_dict.items())
+    combinations = [dict(zip(keys, v)) for v in product(*values)]
+
+    for combination in combinations:
+        label = ", ".join([f"{key}={value}" for key, value in combination.items()])
+        matching_files = filter_filenames_by_variables(directory, combination,comp)
+        print(f"Combination: {combination}")
+        print(f"Matching files: {matching_files}")
+
+        if not matching_files:
+            print(f"No matching files for combination: {combination}")
+            continue
+
+        data = []
+        for pkl_file in matching_files:
+            filepath = os.path.join(directory, pkl_file)
+            with open(filepath, 'rb') as file:
+                data.append(pickle.load(file))
+
+        DC_params, dt, n_step, x0, u0, waveform, flowfield = extract_parameters(matching_files[0], directory,compressed=comp)
+        print('**********',DC_params)
+        DC_params['T'] = 0.0
+        final_r = []
+        final_z = []
+        T = []
+
+        if minus_DC:
+            DCdata = find_DC_file_with_parameters(directory, DC_params, compressed=comp)
+            DC_final_r = np.mean(DCdata.trajectory[-N, 0])
+            DC_final_z = np.mean(DCdata.trajectory[-N, 1])
+            if normalizeDC:
+                for d in data:
+                    final_r.append((np.mean(d.trajectory[-N, 0])-x0[0])/(DC_final_r-x0[0]) - 1)
+                    final_z.append((np.mean(d.trajectory[-N, 1])-x0[1])/(DC_final_z-x0[1]) - 1)
+                    T.append(d.T)
+            else:
+                for d in data:
+                    final_r.append(np.mean(d.trajectory[-N, 0]) - DC_final_r)
+                    final_z.append(np.mean(d.trajectory[-N, 1]) - DC_final_z)
+                    T.append(d.T)
+
+        else:
+            if normalizeDC:
+                DCdata = find_DC_file_with_parameters(directory, DC_params, compressed=comp)
+                DC_final_r = np.mean(DCdata.trajectory[-N, 0])
+                DC_final_z = np.mean(DCdata.trajectory[-N, 1])
+                for d in data:
+                    final_r.append((np.mean(d.trajectory[-N, 0])-x0[0])/(DC_final_r-x0[0]))
+                    final_z.append((np.mean(d.trajectory[-N, 1])-x0[1])/(DC_final_z-x0[1]))
+                    T.append(d.T)
+            else:
+                for d in data:
+                    final_r.append(np.mean(d.trajectory[-N, 0]))
+                    final_z.append(np.mean(d.trajectory[-N, 1]))
+                    T.append(d.T)
+
+        order = np.argsort(T)
+        final_r_sorted = np.array(final_r)[order][1:]
+        final_z_sorted = np.array(final_z)[order][1:]
+        T_sorted = np.array(T)[order][1:]
+
+        print(final_r_sorted)
+
+        radial = np.sqrt(final_r_sorted**2 + final_z_sorted**2)
+        #tangential = np.arctan(final_z_sorted/final_r_sorted)*radial
+        axs[0].plot(T_sorted, radial, label=label)
+        #axs[1].plot(T_sorted, tangential, label=label)
+
+    axs[0].set_xlabel('T/s')
+    axs[0].set_ylabel('r')
+    axs[0].autoscale()
+    axs[0].set_xscale('log')
+    axs[0].set_title(f'r separation, normalized = {normalizeDC}')
+
+    axs[1].set_xlabel('T/s')
+    axs[1].set_ylabel('theta')
+    axs[1].autoscale()
+    axs[1].set_xscale('log')
+    axs[1].set_title(f'z separation, normalized = {normalizeDC}')
+    axs[1].legend()
+
+    plt.tight_layout()
+    plt.show()
+
+
 def filter_filenames_by_variables(directory, variable_dict,compressed):
     matching_files = []
     for filename in os.listdir(directory):
@@ -399,8 +490,6 @@ def separation_over_time(directory, variable_dict,T_plot_list, minus_DC = True, 
             iplot = np.argmin(diff)
             closestT = data[iplot].T
             time_points = data[iplot].time_points
-            r_plot=[]
-            z_plot=[]
             if minus_DC:
                 if normalizeDC:
                     r_plot = (data[iplot].trajectory[:, 0]-x0[0]) / (DCdata.trajectory[:, 0]-x0[0]) - 1
@@ -416,11 +505,108 @@ def separation_over_time(directory, variable_dict,T_plot_list, minus_DC = True, 
                     r_plot = (data[iplot].trajectory[:, 0])
                     z_plot = (data[iplot].trajectory[:, 1])
 
-            axs[0].plot(time_points[100000:],
-                        r_plot[100000:]
+            r_plot = select_every_100th(r_plot)
+            z_plot = select_every_100th(z_plot)
+            time_points = select_every_100th(time_points)
+            axs[0].plot(time_points,
+                        r_plot[:len(time_points)]
                         , label=label)
-            axs[1].plot(time_points[100000:],
-                        z_plot[100000:]
+            axs[1].plot(time_points,
+                        z_plot[:len(time_points)]
+                        , label=label)
+            if fitting:
+                r_fit_func, r_coeff = fit_polynomial_fraction(time_points,
+                                                              r_plot[:len(time_points)],
+                                                         poly_degree=1, frac_range=(1 / 8, 1))
+
+                z_fit_func, z_coeff = fit_polynomial_fraction(time_points,
+                                                              z_plot[:len(time_points)],
+                                                         poly_degree=2, frac_range=(1 / 8, 1))
+
+                t_fit = np.linspace(min(data[iplot].time_points), max(data[iplot].time_points), 1000)
+                r_poly_fit = r_fit_func(t_fit)
+                z_poly_fit = z_fit_func(t_fit)
+
+                axs[0].plot(t_fit,r_poly_fit,label = f"r_fitted_coeff = {r_coeff} ")
+                axs[1].plot(t_fit, z_poly_fit, label=f"z_fitted_coeff = {z_coeff} ")
+                print(f"r_fitted_coeff = {r_coeff}")
+                print(f"z_fitted_coeff = {z_coeff}")
+
+            print('plot for T =', closestT)
+
+    axs[0].set_xlabel('t')
+    axs[0].set_ylabel('r')
+    axs[0].autoscale()
+    axs[0].set_title(f'plotted for T = {closestT}s , normalization = {normalizeDC}')
+    axs[1].set_xlabel('t')
+    axs[1].set_ylabel('z')
+    axs[1].autoscale()
+    axs[1].legend()
+    axs[1].set_title(f'plotted for T = {closestT}s, normalization = {normalizeDC}')
+
+    plt.tight_layout()
+    plt.show()
+
+
+def spherical_separation_over_time(directory, variable_dict,T_plot_list, minus_DC = True, normalizeDC = True, comp = False, fitting = False, ignore_final = int(1)):
+    fig, axs = plt.subplots(2, 1, figsize=(10, 8))
+
+    keys, values = zip(*variable_dict.items())
+    combinations = [dict(zip(keys, v)) for v in product(*values)]
+
+    for combination in combinations:
+        label = ", ".join([f"{key}={value}" for key, value in combination.items()])
+
+        matching_files = filter_filenames_by_variables(directory, combination, comp)
+        print(f"Combination: {combination}")
+        print(f"Matching files: {matching_files}")
+
+        if not matching_files:
+            print(f"No matching files for combination: {combination}")
+            continue
+
+        data = []
+        for pkl_file in matching_files:
+            filepath = os.path.join(directory, pkl_file)
+            with open(filepath, 'rb') as file:
+                data.append(pickle.load(file))
+
+        DC_params, dt, n_step, x0, u0, waveform, flowfield = extract_parameters(matching_files[0], directory,                                                                        compressed=comp)
+        DC_params['T'] = 0.0
+        DCdata = find_DC_file_with_parameters(directory, DC_params, compressed=comp)
+        for T in T_plot_list:
+            diff = []
+            for i in range(0, len(data)):
+                diff.append(abs(data[i].T - T))
+            iplot = np.argmin(diff)
+            closestT = data[iplot].T
+            time_points = data[iplot].time_points
+            if minus_DC:
+                if normalizeDC:
+                    r_plot = (data[iplot].trajectory[:, 0]-x0[0]) / (DCdata.trajectory[:, 0]-x0[0]) - 1
+                    z_plot = (data[iplot].trajectory[:, 1]-x0[1]) / (DCdata.trajectory[:, 1]-x0[1]) - 1
+                else:
+                    r_plot = (data[iplot].trajectory[:, 0]) - (DCdata.trajectory[:, 0])
+                    z_plot = (data[iplot].trajectory[:, 1]) - (DCdata.trajectory[:, 1])
+            else:
+                if normalizeDC:
+                    r_plot = (data[iplot].trajectory[:, 0] - x0[0]) / (DCdata.trajectory[:, 0] - x0[0])
+                    z_plot = (data[iplot].trajectory[:, 1] - x0[1]) / (DCdata.trajectory[:, 1] - x0[1])
+                else:
+                    r_plot = (data[iplot].trajectory[:, 0])
+                    z_plot = (data[iplot].trajectory[:, 1])
+
+            r_plot_arr = np.array(select_every_100th(r_plot))
+            z_plot_arr = np.array(select_every_100th(z_plot))
+            time_points = select_every_100th(time_points)
+
+            radial = np.sqrt(r_plot_arr**2 + z_plot_arr**2)
+            tangential = np.arctan(z_plot_arr/r_plot_arr)*radial
+            axs[0].plot(time_points[:int(-ignore_final/100)],
+                        radial[:int(-ignore_final/100)]
+                        , label=label)
+            axs[1].plot(time_points[:int(-ignore_final/100)],
+                        tangential[:int(-ignore_final/100)]
                         , label=label)
             if fitting:
                 r_fit_func, r_coeff = fit_polynomial_fraction(time_points,
@@ -445,13 +631,16 @@ def separation_over_time(directory, variable_dict,T_plot_list, minus_DC = True, 
     axs[0].set_xlabel('t')
     axs[0].set_ylabel('r')
     axs[0].autoscale()
+    axs[0].set_title(f'plotted for T = {closestT}s , normalization = {normalizeDC}')
     axs[1].set_xlabel('t')
     axs[1].set_ylabel('z')
     axs[1].autoscale()
     axs[1].legend()
+    axs[1].set_title(f'plotted for T = {closestT}s, normalization = {normalizeDC}')
 
     plt.tight_layout()
     plt.show()
+
 
 def fit_polynomial_fraction(t,x, poly_degree=2, frac_range=(1 / 8, 7 / 8)):
     # Determine the start and end indices based on the fraction range
@@ -642,3 +831,97 @@ def energy_over_time(directory, variable_dict,T_plot_list, minus_DC = True, norm
     plt.legend()
     plt.tight_layout()
     plt.show()
+
+def plot_multiple_trajectory(directory, variable_dict,T_plot_list, comp = False,ignore_final = int(1)):
+    fig, axs = plt.subplots(1, 1, figsize=(10, 10))
+    outer_circle = patches.Circle((0, 0), solver.r2, edgecolor='b', facecolor='none',lw = 2)
+    inner_circle = patches.Circle((0, 0), solver.r1, edgecolor='b', facecolor='none',lw = 2)
+    axs.add_patch(inner_circle)
+    axs.add_patch(outer_circle)
+    keys, values = zip(*variable_dict.items())
+    combinations = [dict(zip(keys, v)) for v in product(*values)]
+
+    for combination in combinations:
+        label = ", ".join([f"{key}={value}" for key, value in combination.items()])
+
+        matching_files = filter_filenames_by_variables(directory, combination, comp)
+        print(f"Combination: {combination}")
+        print(f"Matching files: {matching_files}")
+
+        if not matching_files:
+            print(f"No matching files for combination: {combination}")
+            continue
+
+        data = []
+        for pkl_file in matching_files:
+            filepath = os.path.join(directory, pkl_file)
+            with open(filepath, 'rb') as file:
+                data.append(pickle.load(file))
+
+        for T in T_plot_list:
+            diff = []
+            for i in range(0, len(data)):
+                diff.append(abs(data[i].T - T))
+            iplot = np.argmin(diff)
+            closestT = data[iplot].T
+            plot_trajectory_r = select_every_100th(data[iplot].trajectory[:-ignore_final, 0])
+            plot_trajectory_z = select_every_100th(data[iplot].trajectory[:-ignore_final, 1])
+            axs.plot(plot_trajectory_r,
+                        plot_trajectory_z
+                        , label=label)
+    axs.set_xlabel('r')
+    axs.set_ylabel('z')
+    axs.legend()
+    plt.show()
+
+def plot_3d(xy_pairs, z_values):
+    # Extract x and y values from xy_pairs
+    x_values = [pair[0] for pair in xy_pairs]
+    y_values = [pair[1] for pair in xy_pairs]
+
+    # Create a new figure for the 3D plot
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection='3d')
+
+    # Plot the data
+    ax.scatter(x_values, y_values, z_values, c='r', marker='o')
+    ax.auto_scale_xyz([min(x_values), max(x_values)], [min(y_values), max(y_values)], [min(z_values), max(z_values)])
+
+    # Set labels
+    ax.set_xlabel('relative period')
+    ax.set_ylabel('relative amplitude')
+    ax.set_zlabel('separation')
+
+    # Show the plot
+    plt.show()
+
+def select_every_100th(original_list):
+
+    # Initialize the new list with the first value
+    new_list = [original_list[0]]
+
+    # Iterate over the original list and select every 100th value
+    for i in range(99, len(original_list), 100):
+        new_list.append(original_list[i])
+
+    # Add the last value of the original list if it's not already included
+    if original_list[-1] != new_list[-1]:
+        new_list.append(original_list[-1])
+
+    return new_list
+
+def plot_E_field():
+    r1 = 0.005
+    r2 = 0.015
+    r_arr = np.linspace(r1,r2,1000)
+    E_arr = np.linspace(r1,r2,1000)
+    V = 1
+    for i in range(0,len(r_arr)) :
+        if r_arr[i] <= 0.01 :
+            E_arr[i] = V / (np.log(r2 / r1)) /r_arr[i]
+        else:
+            E_arr[i] = V * 0.01/r1 / (np.log(r2 / r1)) / r_arr[i]
+    plt.plot(r_arr,E_arr)
+    plt.show()
+
+#plot_E_field()
